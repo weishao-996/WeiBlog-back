@@ -1,0 +1,5 @@
+#应用环境
+#公共配制
+spring:
+  profiles:
+    active: dev
