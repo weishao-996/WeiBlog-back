@@ -2,4 +2,4 @@
 #公共配制
 spring:
   profiles:
-    active: dev
+    active: pro

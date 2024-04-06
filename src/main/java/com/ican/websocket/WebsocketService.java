@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -62,15 +63,20 @@ public class WebsocketService {
     public static class ChatConfigurator extends ServerEndpointConfig.Configurator {
 
         public static final String IP = "X-Real-IP";
+        public static final String SESSION_ID = "sessionId";
 //        public static final String IP = "X-Forwarded-For";
 
         @Override
         public void modifyHandshake(ServerEndpointConfig config, HandshakeRequest request, HandshakeResponse response) {
             try {
+                //生成唯一的会话ID
+                String sessionId = UUID.randomUUID().toString();
                 String ipAddress = request.getHeaders().get(IP.toLowerCase()).get(0);
                 config.getUserProperties().put(IP, ipAddress);
+                config.getUserProperties().put(SESSION_ID, sessionId);
             } catch (Exception e) {
-                config.getUserProperties().put(IP, "未知ip");
+                config.getUserProperties().put(IP, "unknown_ip");
+                config.getUserProperties().put(SESSION_ID, "unknown_session_id");
             }
         }
     }
@@ -84,8 +90,9 @@ public class WebsocketService {
     @OnOpen
     public void onOpen(Session session, EndpointConfig endpointConfig) throws IOException {
         // 当前session加入连接
+        String sessionId = endpointConfig.getUserProperties().get(ChatConfigurator.SESSION_ID).toString();
         String ipAddress = endpointConfig.getUserProperties().get(ChatConfigurator.IP).toString();
-        WS_CONNECTIONS.put(ipAddress, session);
+        WS_CONNECTIONS.put(sessionId, session);
         // 更新在线人数
         ONLINE_NUM.incrementAndGet();
         updateOnlineCount();
@@ -144,7 +151,8 @@ public class WebsocketService {
     public void onClose(Session session) {
         // 移除会话
         String ipAddress = session.getUserProperties().get(ChatConfigurator.IP).toString();
-        WS_CONNECTIONS.remove(ipAddress);
+        String sessionId= session.getUserProperties().get(ChatConfigurator.SESSION_ID).toString();
+        WS_CONNECTIONS.remove(sessionId);
         // 更新在线人数
         ONLINE_NUM.decrementAndGet();
         updateOnlineCount();
